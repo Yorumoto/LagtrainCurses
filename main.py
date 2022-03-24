@@ -1,12 +1,9 @@
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import logging
 import curses
 import time as t
 from pygame import mixer
 mixer.init()
-
-logging.basicConfig(filename=".log", filemode="w+", format="%(message)s", level=logging.DEBUG)
 
 audio = mixer.Sound(os.path.join('vid', 'audio.mp3'))
 
