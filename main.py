@@ -18,10 +18,9 @@ curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLUE)
 curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_WHITE)
 
 levels = {
-    '0': (' ',),
-    '1': (' ', curses.color_pair(2)),
-    '2': (' ', curses.color_pair(3)),
-    '3': (' ', curses.color_pair(1)),
+    '1': curses.color_pair(2),
+    '2': curses.color_pair(3),
+    '3': curses.color_pair(1),
 }
 
 render_error_msg = "Cannot fit/Rendering Error"
@@ -54,13 +53,19 @@ def video(src, first_lines, parsed):
 
             for y, column in enumerate(parsed[0].get('lines')):
                 for x, row in enumerate(column):
-                    src.addstr(abs_y + y, abs_x + x, *levels[row])
-            
+                    pair = levels.get(row)
+
+                    if pair: 
+                        src.attron(pair)
+                    src.addstr(abs_y + y, abs_x + x, " ")
+                    if pair:
+                        src.attroff(pair)
+
             src.addstr(abs_y, abs_x, f'Frame: {frame_count}/{length}')
             src.addstr(abs_y + 1, abs_x, f'Time: {time:.3f}s | Draw: {int((t.perf_counter() - d_start) * 1000000)}ns')
         except curses.error:
             try:
-                src.addstr(hh, hw - (len(render_error_msg) // 2), render_error_msg)
+                src.addstr(hh, hw - (len(render_error_msg) // 2), render_error_msg, curses.A_NORMAL)
             except curses.error:
                 pass
 
@@ -95,4 +100,7 @@ def main(src):
 
         video(src, lines[0], parsed)
 
-curses.wrapper(main)
+try:
+    curses.wrapper(main)
+except KeyboardInterrupt:
+    pass
