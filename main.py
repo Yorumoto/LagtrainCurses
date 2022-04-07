@@ -1,9 +1,12 @@
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import curses
+import logging
 import time as t
 from pygame import mixer
 mixer.init()
+
+logging.basicConfig(filename=".log", filemode="w+", format="%(asctime)s - %(message)s", level=logging.DEBUG)
 
 audio = mixer.Sound(os.path.join('vid', 'audio.mp3'))
 
@@ -15,22 +18,25 @@ curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLUE)
 curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_WHITE)
 
 levels = {
-    '1': curses.color_pair(2),
-    '2': curses.color_pair(3),
-    '3': curses.color_pair(1),
+    1: curses.color_pair(2),
+    2: curses.color_pair(3),
+    3: curses.color_pair(1),
 }
 
 render_error_msg = "Cannot fit/Rendering Error"
 last_center = (0, 0)
+frames = []
 
 def video(src, first_lines, parsed):
-    f_width, f_height = (int(x)//2 for x in first_lines.split(','))
+    v_width, v_height = (int(x) for x in first_lines.split(','))
+    f_width, f_height = v_width // 2, v_height // 2
+
     start_time = t.time()
     frame_count = 1
     length = len(parsed)
     audio.play()
     
-    global last_center
+    global last_center, frames
 
     while parsed:
         time = t.time() - start_time
@@ -45,18 +51,49 @@ def video(src, first_lines, parsed):
         abs_x = hw - (f_width)
         
         try:
-            if last_center != (hh, hw):
+            different_size = last_center != (hh, hw)
+
+            if different_size:
                 src.clear()
 
-            for y, column in enumerate(parsed[0].get('lines')):
-                for x, row in enumerate(column):
-                    pair = levels.get(row)
+            first_time = not frames
+            buffer = []
+            nbuffer = {}
 
-                    if pair: 
-                        src.attron(pair)
-                    src.addstr(abs_y + y, abs_x + x, " ")
-                    if pair:
-                        src.attroff(pair)
+            for index, item in enumerate(parsed[0].get('lines')):
+                mod_index = index % 3
+
+                if mod_index == 0:
+                    if index > 0:
+                        if first_time or different_size:
+                            frames.append(nbuffer['level'])
+                        else:
+                            frames[nbuffer['x'] + (v_width * nbuffer['y'])] = nbuffer['level']
+                        
+                        buffer.append(nbuffer)
+                        nbuffer = {}
+                        
+                    
+                    nbuffer['x'] = item
+                elif mod_index == 1:
+                    nbuffer['y'] = item
+                elif mod_index == 2:
+                    nbuffer['level'] = item
+            
+            src.addstr(0, 0, str(len(buffer)))
+            src.addstr(1, 0, str(len(frames)))
+
+            for index, item in enumerate(buffer):
+                pair = levels.get(item.get('level') or 0)
+
+                if pair:
+                    src.attron(pair)
+                
+                src.addstr(abs_y + item.get('y'), abs_x + item.get('x'), " ")
+
+                if pair:
+                    src.attroff(pair)
+
 
             src.addstr(abs_y, abs_x, f'Frame: {frame_count}/{length}')
             src.addstr(abs_y + 1, abs_x, f'Time: {time:.3f}s | Draw: {int((t.perf_counter() - d_start) * 1000000)}ns')
@@ -91,7 +128,12 @@ def main(src):
                     continue
                 if not n_item.get('lines'):
                     n_item['lines'] = []
-                n_item['lines'].append(line)
+
+                    for x in line.split(','):
+                        try:
+                            n_item['lines'].append(int(x))
+                        except ValueError:
+                            n_item['lines'].append(0)
             
         # print(parsed[0])
 

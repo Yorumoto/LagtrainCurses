@@ -21,9 +21,13 @@ CELLS_Y = (36 * 2) * user_settings['scale']
 # raw_text.write(f'{CELLS_X},{CELLS_Y}\n')
 frame_rate = int(max(user_settings['frame_rate'], 1))
 frames = []
+last_frame = []
+
+def get_level(pixel):
+    return pixel // user_settings['black_depth']
 
 def frame():
-    global count, frames
+    global count, frames, last_frame
 
     success, img = video.read()
     
@@ -40,11 +44,26 @@ def frame():
     s = f"{(1/frame_rate) * count}\n"
     data = img.load()
 
-    for y in range(CELLS_Y):
-        for x in range(CELLS_X):
-            s += f"{min(3, data[x, y] // user_settings['black_depth'])}"
-        s += "\n"
-    s += ',\n'
+    if not last_frame:
+        for y in range(CELLS_Y):
+            for x in range(CELLS_X):
+                # s += f"{min(}"
+                l = get_level(data[x, y])
+                s += f"{x},{y},{l},"
+                last_frame.append(l)
+    else:
+        for y in range(CELLS_Y):
+            for x in range(CELLS_X):
+                i = (y * CELLS_X) + x
+                l = get_level(data[x, y])
+
+                if l == last_frame[i]:
+                    continue
+                
+                last_frame[i] = l
+                s += f"{x},{y},{l},"
+
+    s += '\n,\n'
 
     frames.append(s)
 
