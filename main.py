@@ -36,6 +36,8 @@ def video(src, first_lines, parsed):
     length = len(parsed)
     audio.play()
     
+    highest_draw = 0
+
     global last_center, frames
 
     while parsed:
@@ -95,8 +97,12 @@ def video(src, first_lines, parsed):
                     src.attroff(pair)
 
 
+            draw = int((t.perf_counter() - d_start) * 1000000)
+            highest_draw = draw if draw > highest_draw else highest_draw
+
             src.addstr(abs_y, abs_x, f'Frame: {frame_count}/{length}')
-            src.addstr(abs_y + 1, abs_x, f'Time: {time:.3f}s | Draw: {int((t.perf_counter() - d_start) * 1000000)}ns')
+            src.addstr(abs_y + 1, abs_x, f'Time: {time:.3f}s | Draw: {draw}ns')
+            src.addstr(abs_y + 2, abs_x, f"Highest Draw: {highest_draw}ns")
         except curses.error:
             try:
                 src.addstr(hh, hw - (len(render_error_msg) // 2), render_error_msg, curses.A_NORMAL)
